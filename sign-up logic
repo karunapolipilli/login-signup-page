@@ -1,0 +1,50 @@
+<?php
+// signup.php
+session_start();
+require_once 'config.php';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = trim($_POST['username']);
+    $email = trim($_POST['email']);
+    $password = $_POST['password'];
+    $confirm_password = $_POST['confirm_password'];
+    
+    // Validation
+    if (empty($username) || empty($email) || empty($password) || empty($confirm_password)) {
+        die("Please fill all fields");
+    }
+    
+    if ($password !== $confirm_password) {
+        die("Passwords do not match");
+    }
+    
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        die("Invalid email format");
+    }
+    
+    try {
+        $conn = connectDB();
+        
+        // Check if username or email already exists
+        $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
+        $stmt->execute([$username, $email]);
+        
+        if ($stmt->rowCount() > 0) {
+            die("Username or email already exists");
+        }
+        
+        // Hash password
+        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+        
+        // Insert new user
+        $stmt = $conn->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
+        $stmt->execute([$username, $email, $hashed_password]);
+        
+        header("Location: login.html");
+        exit();
+        
+    } catch(PDOException $e) {
+        die("Error: " . $e->getMessage());
+    }
+}
+?>
